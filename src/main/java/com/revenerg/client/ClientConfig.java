@@ -1,5 +1,6 @@
 package com.revenerg.client;
 
+import com.revenerg.client.cmd.OpenSSLCommand;
 import lombok.Getter;
 import lombok.extern.jbosslog.JBossLog;
 
@@ -7,8 +8,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 @JBossLog
 @Getter
@@ -20,8 +23,10 @@ public class ClientConfig {
     private final String secret;
     private final String mqttUser;
     private final boolean useSSL;
+    private final boolean autoProvision;
     private final Path tlsCert;
-
+    private final Path tlsCertKey;
+    
     public ClientConfig(Path propertiesFile) throws IOException {
         Properties p = new Properties();
         p.load(Files.newInputStream(propertiesFile));
@@ -33,58 +38,67 @@ public class ClientConfig {
         this.secret =  p.getProperty("secret", null);
         this.mqttUser = realm + ":" + username;
         this.useSSL = address.startsWith("ssl");
+        this.autoProvision = Objects.equals("true", p.getProperty("autoprovision", null));
 
         // Find a TLS cert relative to the properties file if needed.
         this.tlsCert = Optional.ofNullable(p.getProperty("tlsCert", null))
             .map(Paths::get)
             .map(path -> path.isAbsolute()
                     ? path
-                    : propertiesFile.getParent().relativize(path))
+                    : propertiesFile.getParent().resolve(path))
                     .orElse(null);
+
+        // Find a TLS cert key relative to the properties file if needed.
+        this.tlsCertKey = Optional.ofNullable(p.getProperty("tlsCertKey", null))
+                .map(Paths::get)
+                .map(path -> path.isAbsolute()
+                        ? path
+                        : propertiesFile.getParent().resolve(path))
+                .orElse(null);
     }
 
 
     public ClientConfig validate() {
-        validateAddress();
-        validateMqttInfo();
-        validateSSL();
-        return this;
-    }
-
-    private void validateAddress() {
-        if (!(address.startsWith("ssl") || address.startsWith("tcp"))) {
-            throw new IllegalArgumentException("Address must begin with a protocol, ssl:// or tcp:// (Java Specific).");
+        log.infof("Validating ClientConfig.");
+        if (validateAddress() && validateMqttInfo() &&  validateSSL()) {
+            log.infof("Valid ClientConfig.");
+            return this;
         }
+        log.errorf("Could not validate configuration.");
+        throw new IllegalStateException("Could not validate config.");
     }
 
-    private void validateMqttInfo() {
+    private boolean validateAddress() {
+        if (!(address.startsWith("ssl") || address.startsWith("tcp"))) {
+            log.errorf("Address must begin with a protocol, ssl:// or tcp:// (Java Specific).");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validateMqttInfo() {
         if (clientId == null) {
-            throw new IllegalArgumentException("clientId must be present.");
+            log.errorf("clientId must be present.");
         }
         if (realm == null) {
-            throw new IllegalArgumentException("realm must be present.");
+            log.errorf("realm must be present.");
         }
         if (username == null) {
-            throw new IllegalArgumentException("username must be present.");
+            log.errorf("username must be present.");
         }
         if (secret == null) {
-            throw new IllegalArgumentException("secret must be present.");
+            log.errorf("secret must be present.");
         }
+        return Stream.of(clientId, realm, username, secret).noneMatch(Objects::isNull);
     }
 
-    private void validateSSL() {
+    private boolean validateSSL() {
         if (useSSL) {
             if (tlsCert != null) {
-                if (!Files.exists(tlsCert)) {
-                    throw new IllegalStateException("CA File '%s' doesn't exist".formatted(tlsCert));
-                }
-                if (!Files.exists(tlsCert)) {
-                    throw new IllegalStateException("CA File '%s' doesn't exist".formatted(tlsCert));
-                }
-                if (!Files.isReadable(tlsCert)) {
-                    throw new IllegalStateException("CA File '%s' tlsCertnnot be read".formatted(tlsCert));
-                }
+                return OpenSSLCommand.accessibilityCheck("tlsCert", tlsCert);
             }
+            return false;
         }
+        return true;
     }
 }
