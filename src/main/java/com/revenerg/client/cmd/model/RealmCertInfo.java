@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 @JBossLog
-public record CertInfo(String deviceId, Path ca, Path caKey, DeviceKeyAndCSR deviceKeyAndCSR, Duration expiry) {
+public record RealmCertInfo(String deviceId, Path ca, Path caKey, DeviceKeyAndCSR deviceKeyAndCSR, Duration expiry) {
     public boolean validate() {
         boolean validated = true;
         if (deviceId == null) {

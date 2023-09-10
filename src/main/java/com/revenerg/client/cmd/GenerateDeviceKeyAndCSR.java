@@ -1,6 +1,6 @@
 package com.revenerg.client.cmd;
 
-import com.revenerg.client.cmd.model.CSRInfo;
+import com.revenerg.client.cmd.model.DeviceInfo;
 import com.revenerg.client.cmd.model.DeviceKeyAndCSR;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -14,10 +14,10 @@ import java.nio.file.Path;
  */
 @JBossLog
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class GenerateKeyAndCSR extends OpenSSLCommand<CSRInfo, DeviceKeyAndCSR> {
-    public static final GenerateKeyAndCSR INSTANCE = new GenerateKeyAndCSR();
+public class GenerateDeviceKeyAndCSR extends OpenSSLCommand<DeviceInfo, DeviceKeyAndCSR> {
+    public static final GenerateDeviceKeyAndCSR INSTANCE = new GenerateDeviceKeyAndCSR();
     @Override
-    public DeviceKeyAndCSR apply(CSRInfo deviceInfo) {
+    public DeviceKeyAndCSR apply(DeviceInfo deviceInfo) {
         String subject = deviceInfo.subjectString();
 
         Path deviceKey = tempFile(deviceInfo.deviceId(), deviceInfo.deviceId() + ".key");

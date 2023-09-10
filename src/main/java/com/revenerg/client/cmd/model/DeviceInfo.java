@@ -1,11 +1,11 @@
 package com.revenerg.client.cmd.model;
 
-public record CSRInfo(String deviceId, String countryCode, String cityName) {
+public record DeviceInfo(String deviceId, String countryCode, String cityName) {
     private static final String COUNTRY_TEMPLATE = "/C=%s";
     private static final String CITY_TEMPLATE = "/ST=%s";
     private static final String SUBJECT_TEMPLATE = "/O=OpenRemote/CN=%s";
 
-    public CSRInfo(String deviceId) {
+    public DeviceInfo(String deviceId) {
         this(deviceId, null, null);
     }
 

@@ -1,9 +1,9 @@
 package com.revenerg.client;
 
-import com.revenerg.client.cmd.GenerateKeyAndCSR;
-import com.revenerg.client.cmd.GenerateSignedCert;
-import com.revenerg.client.cmd.model.CSRInfo;
-import com.revenerg.client.cmd.model.CertInfo;
+import com.revenerg.client.cmd.GenerateDeviceKeyAndCSR;
+import com.revenerg.client.cmd.GenerateDeviceCertSignedByRealmCert;
+import com.revenerg.client.cmd.model.DeviceInfo;
+import com.revenerg.client.cmd.model.RealmCertInfo;
 import com.revenerg.client.cmd.model.DeviceCert;
 import com.revenerg.client.cmd.model.DeviceKeyAndCSR;
 import lombok.extern.jbosslog.JBossLog;
@@ -27,12 +27,12 @@ public class ClientTests {
         ClientConfig config = new ClientConfig(PROPERTIES_FILE);
 
         // Create a device CSR + key.
-        CSRInfo info = new CSRInfo(config.getClientId());
-        DeviceKeyAndCSR csr = GenerateKeyAndCSR.INSTANCE.apply(info);
+        DeviceInfo info = new DeviceInfo(config.getClientId());
+        DeviceKeyAndCSR csr = GenerateDeviceKeyAndCSR.INSTANCE.apply(info);
 
         // Create a cert for the device signed by the Realm CA Cert above.
-        CertInfo certInfo = new CertInfo(config.getClientId(), config.getTlsCert(), config.getTlsCertKey(), csr, Duration.ofDays(365 * 20));
-        DeviceCert deviceCert = GenerateSignedCert.INSTANCE.apply(certInfo);
+        RealmCertInfo realmCertInfo = new RealmCertInfo(config.getClientId(), config.getTlsCert(), config.getTlsCertKey(), csr, Duration.ofDays(365 * 20));
+        DeviceCert deviceCert = GenerateDeviceCertSignedByRealmCert.INSTANCE.apply(realmCertInfo);
 
         log.infof("Creating OpenRemoteClient.");
         // Lets connect!
