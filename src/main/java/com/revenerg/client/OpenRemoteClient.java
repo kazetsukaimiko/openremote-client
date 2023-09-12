@@ -101,7 +101,7 @@ public class OpenRemoteClient implements AutoCloseable {
     }
 
     private MqttMessage debugMessage(String topic, MqttMessage message) {
-        log.infof("Received message on topic '%s':%s\s%s%s",
+        log.infof("Received message on topic '%s':%s\n%s%s",
                 topic, DELIM, new String(message.getPayload(), StandardCharsets.UTF_8), DELIM);
         return message;
     }
@@ -134,7 +134,7 @@ public class OpenRemoteClient implements AutoCloseable {
         if (config.isUseSSL()) {
             log.infof("Using TLS.");
             if (config.getTlsCert() != null) {
-                log.infof("Using TLS Cert: %s", config.getTlsCert());
+                log.infof("Using TLS Cert: %s", config.getRealmCert());
                 options.setSocketFactory(new CACertSocketFactory(config.getTlsCert()).getFactory());
             } else {
                 log.warnf("No TLS Cert provided, trusting connection.");

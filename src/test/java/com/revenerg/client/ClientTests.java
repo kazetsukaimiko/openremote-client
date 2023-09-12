@@ -18,20 +18,22 @@ import java.time.Duration;
 @JBossLog
 public class ClientTests {
 
-    Path PROPERTIES_FILE = Paths.get(System.getProperty("user.home"), "openremote.properties");
+    static final Path PROPERTIES_FILE = Paths.get(System.getProperty("user.home"), "openremote.properties");
 
     @Test
     public void testConnectingToOpenRemote() throws Exception {
 
-        // Start with a Realm CA Cert and signing key.
+        // Start with a Realm CA Cert and signing key. (ca.pem and ca.key respectively)
         ClientConfig config = new ClientConfig(PROPERTIES_FILE);
 
-        // Create a device CSR + key.
+        // Create a device CSR + key. We will use the CSR to generate a device-specific PEM file.
+        // The clientId (UUID) is needed.
         DeviceInfo info = new DeviceInfo(config.getClientId());
+        // The class that calls openssl to generate the device CSR + Key.
         DeviceKeyAndCSR csr = GenerateDeviceKeyAndCSR.INSTANCE.apply(info);
 
-        // Create a cert for the device signed by the Realm CA Cert above.
-        RealmCertInfo realmCertInfo = new RealmCertInfo(config.getClientId(), config.getTlsCert(), config.getTlsCertKey(), csr, Duration.ofDays(365 * 20));
+        // Create a cert specific to the device signed by the Realm CA Cert above.
+        RealmCertInfo realmCertInfo = new RealmCertInfo(config.getClientId(), config.getRealmCert(), config.getRealmCertKey(), csr, Duration.ofDays(365 * 20));
         DeviceCert deviceCert = GenerateDeviceCertSignedByRealmCert.INSTANCE.apply(realmCertInfo);
 
         log.infof("Creating OpenRemoteClient.");

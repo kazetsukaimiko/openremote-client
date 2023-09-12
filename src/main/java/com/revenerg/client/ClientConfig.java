@@ -25,7 +25,8 @@ public class ClientConfig {
     private final boolean useSSL;
     private final boolean autoProvision;
     private final Path tlsCert;
-    private final Path tlsCertKey;
+    private final Path realmCert;
+    private final Path realmCertKey;
     
     public ClientConfig(Path propertiesFile) throws IOException {
         Properties p = new Properties();
@@ -42,19 +43,28 @@ public class ClientConfig {
 
         // Find a TLS cert relative to the properties file if needed.
         this.tlsCert = Optional.ofNullable(p.getProperty("tlsCert", null))
+                .map(Paths::get)
+                .map(path -> path.isAbsolute()
+                        ? path
+                        : propertiesFile.getParent().resolve(path))
+                .orElse(null);
+
+        // Find a Realm cert relative to the properties file if needed.
+        this.realmCert = Optional.ofNullable(p.getProperty("realmCert", null))
             .map(Paths::get)
             .map(path -> path.isAbsolute()
                     ? path
                     : propertiesFile.getParent().resolve(path))
                     .orElse(null);
 
-        // Find a TLS cert key relative to the properties file if needed.
-        this.tlsCertKey = Optional.ofNullable(p.getProperty("tlsCertKey", null))
+        // Find a Realm cert key relative to the properties file if needed.
+        this.realmCertKey = Optional.ofNullable(p.getProperty("realmCertKey", null))
                 .map(Paths::get)
                 .map(path -> path.isAbsolute()
                         ? path
                         : propertiesFile.getParent().resolve(path))
                 .orElse(null);
+
     }
 
 
@@ -94,8 +104,8 @@ public class ClientConfig {
 
     private boolean validateSSL() {
         if (useSSL) {
-            if (tlsCert != null) {
-                return OpenSSLCommand.accessibilityCheck("tlsCert", tlsCert);
+            if (realmCert != null) {
+                return OpenSSLCommand.accessibilityCheck("tlsCert", realmCert);
             }
             return false;
         }
