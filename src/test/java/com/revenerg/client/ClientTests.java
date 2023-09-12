@@ -27,14 +27,17 @@ public class ClientTests {
         ClientConfig config = new ClientConfig(PROPERTIES_FILE);
 
         // Create a device CSR + key. We will use the CSR to generate a device-specific PEM file.
-        // The clientId (UUID) is needed.
-        DeviceInfo info = new DeviceInfo(config.getClientId());
         // The class that calls openssl to generate the device CSR + Key.
-        DeviceKeyAndCSR csr = GenerateDeviceKeyAndCSR.INSTANCE.apply(info);
+        DeviceKeyAndCSR csr = GenerateDeviceKeyAndCSR.INSTANCE.apply(new DeviceInfo(
+                config.getClientId()));
 
         // Create a cert specific to the device signed by the Realm CA Cert above.
-        RealmCertInfo realmCertInfo = new RealmCertInfo(config.getClientId(), config.getRealmCert(), config.getRealmCertKey(), csr, Duration.ofDays(365 * 20));
-        DeviceCert deviceCert = GenerateDeviceCertSignedByRealmCert.INSTANCE.apply(realmCertInfo);
+        DeviceCert deviceCert = GenerateDeviceCertSignedByRealmCert.INSTANCE.apply(new RealmCertInfo(
+                config.getClientId(),
+                config.getRealmCert(),
+                config.getRealmCertKey(),
+                csr,
+                Duration.ofDays(365 * 20)));
 
         log.infof("Creating OpenRemoteClient.");
         // Lets connect!
