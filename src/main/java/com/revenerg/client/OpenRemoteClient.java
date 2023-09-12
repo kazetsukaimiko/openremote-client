@@ -39,15 +39,20 @@ public class OpenRemoteClient implements AutoCloseable {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String DELIM = "\n---------------------------------------------------------";
 
+    // %s = the client id
     public static final String PROVISIONING_REQUEST_TOPIC = "provisioning/%s/request";
     public static final String PROVISIONING_RESPONSE_TOPIC = "provisioning/%s/response";
 
     private final ClientConfig config;
     private final MqttClient client;
 
+    // Here's where the client flow begins
     public OpenRemoteClient(@NonNull ClientConfig config, DeviceCert deviceCert) throws CertificateException, IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, MqttException, InterruptedException {
+        // Assert that we
         this.config = config.validate();
+        // Client (connection) creation
         this.client = createClient(config);
+        // We only auto provision if we provide a x509 cert
         if (deviceCert != null) {
             autoProvision(deviceCert);
         }
@@ -68,7 +73,8 @@ public class OpenRemoteClient implements AutoCloseable {
     private void autoProvision(@NonNull DeviceCert deviceCert) throws MqttException, InterruptedException, IOException {
         log.infof("Entering Automatic Provisioning.");
 
-        // Setup provisioning listener.
+        // Setup provisioning listener- subscribe to the response topic and wait for the server to send us
+        // provisioning status.
         var responseTopic = OpenRemoteClient.PROVISIONING_RESPONSE_TOPIC.formatted(config.getClientId());
         log.infof("Subscribing to '%s'".formatted(responseTopic));
         final BlockingQueue<ProvisionResponse> queue = new LinkedBlockingQueue<>();
@@ -77,7 +83,7 @@ public class OpenRemoteClient implements AutoCloseable {
             queue.put(OBJECT_MAPPER.readValue(debugMessage(topic, message).getPayload(), ProvisionResponse.class));
                 });
 
-        // Send certificate.
+        // Send certificate to the request topic
         ProvisionRequest provisionRequest = new ProvisionRequest(Files.readString(deviceCert.devicePem()));
         client.publish(OpenRemoteClient.PROVISIONING_REQUEST_TOPIC.formatted(config.getClientId()),
                 asMqttMessage(provisionRequest));
@@ -100,6 +106,47 @@ public class OpenRemoteClient implements AutoCloseable {
         }
     }
 
+    private static MqttClient createClient(ClientConfig config) throws CertificateException, IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, MqttException {
+        log.infof("Creating MqttClient for %s as %s", config.getAddress(), config.getClientId());
+        // The MQTT client saves stuff apparently
+        MemoryPersistence persistence = new MemoryPersistence();
+        MqttClient mqttClient = new MqttClient(config.getAddress(), config.getClientId(), persistence);
+
+        log.infof("Setting username '%s'.", config.getMqttUser());
+
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setMqttVersion(MQTT_VERSION_3_1_1);
+        options.setUserName(config.getMqttUser());
+        options.setPassword(config.getSecret().toCharArray());
+        options.setCleanSession(true);
+        options.setAutomaticReconnect(true);
+
+        // If we use SSL, setup the LetsEncrypt CA Cert.
+        if (config.isUseSSL()) {
+            log.infof("Using TLS.");
+            if (config.getTlsCert() != null) {
+                log.infof("Using TLS Cert: %s", config.getRealmCert());
+                options.setSocketFactory(new CACertSocketFactory(config.getTlsCert()).getFactory());
+            } else {
+                log.warnf("No TLS Cert provided, trusting connection.");
+                options.setSocketFactory(AllTrustingSocketFactory.INSTANCE.getFactory());
+            }
+        }
+
+        // Connect if needed
+        if (mqttClient.isConnected()) {
+            log.infof("Connected to MQTT Server.");
+        } else {
+            log.infof("Connecting.");
+            mqttClient.connect(options);
+        }
+
+        // Return the client
+        return mqttClient;
+    }
+
+
+
     private MqttMessage debugMessage(String topic, MqttMessage message) {
         log.infof("Received message on topic '%s':%s\n%s%s",
                 topic, DELIM, new String(message.getPayload(), StandardCharsets.UTF_8), DELIM);
@@ -118,37 +165,4 @@ public class OpenRemoteClient implements AutoCloseable {
         return mqttMessage;
     }
 
-    private static MqttClient createClient(ClientConfig config) throws CertificateException, IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, MqttException {
-        log.infof("Creating MqttClient for %s as %s", config.getAddress(), config.getClientId());
-        MemoryPersistence persistence = new MemoryPersistence();
-        MqttClient mqttClient = new MqttClient(config.getAddress(), config.getClientId(), persistence);
-        MqttConnectOptions options = new MqttConnectOptions();
-        options.setMqttVersion(MQTT_VERSION_3_1_1);
-
-        log.infof("Setting username '%s'.", config.getMqttUser());
-        options.setUserName(config.getMqttUser());
-        options.setPassword(config.getSecret().toCharArray());
-        options.setCleanSession(true);
-        options.setAutomaticReconnect(true);
-
-        if (config.isUseSSL()) {
-            log.infof("Using TLS.");
-            if (config.getTlsCert() != null) {
-                log.infof("Using TLS Cert: %s", config.getRealmCert());
-                options.setSocketFactory(new CACertSocketFactory(config.getTlsCert()).getFactory());
-            } else {
-                log.warnf("No TLS Cert provided, trusting connection.");
-                options.setSocketFactory(AllTrustingSocketFactory.INSTANCE.getFactory());
-            }
-        }
-
-        if (mqttClient.isConnected()) {
-            log.infof("Connected to MQTT Server.");
-        } else {
-            log.infof("Connecting.");
-            mqttClient.connect(options);
-        }
-
-        return mqttClient;
-    }
 }
