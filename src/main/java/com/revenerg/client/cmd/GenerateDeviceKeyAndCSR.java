@@ -29,7 +29,7 @@ public class GenerateDeviceKeyAndCSR extends OpenSSLCommand<DeviceInfo, DeviceKe
             executeOpenSSL(
                     "openssl", "req",
                     "-nodes",
-                    "--newkey", "rsa:4096",
+                    "--newkey", "rsa:1024",
                     "-keyout", deviceKey.toString(),
                     "-subj", subject,
                     "-out", deviceCSR.toString());

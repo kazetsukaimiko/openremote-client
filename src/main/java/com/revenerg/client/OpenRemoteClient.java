@@ -97,7 +97,7 @@ public class OpenRemoteClient implements AutoCloseable {
             log.errorf("Provisioning error: %s", error.getError());
             throw new IllegalStateException("Error provisioning: %s".formatted(error.getError()));
         } else if (response instanceof SuccessProvisionResponse success) {
-            log.infof("Successfully provisioned with realm %s ", success.getRealm());
+            log.infof("Successfully provisioned with realm %s. Asset:\n%s", success.getRealm(), success.getAsset());
         } else if (response == null) {
             log.errorf("Provisioning timeout.");
             throw new IllegalStateException("Provisioning timeout.");

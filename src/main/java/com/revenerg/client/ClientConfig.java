@@ -24,6 +24,7 @@ public class ClientConfig {
     private final String mqttUser;
     private final boolean useSSL;
     private final boolean autoProvision;
+    private final boolean binaryClientCert;
     private final Path tlsCert;
     private final Path realmCert;
     private final Path realmCertKey;
@@ -39,6 +40,7 @@ public class ClientConfig {
         this.secret =  p.getProperty("secret", null);
         this.mqttUser = realm + ":" + username;
         this.useSSL = address.startsWith("ssl");
+        this.binaryClientCert = Objects.equals("true", p.getProperty("binaryClientCert", null));
         this.autoProvision = Objects.equals("true", p.getProperty("autoprovision", null));
 
         // Find a TLS cert relative to the properties file if needed.
@@ -111,4 +113,5 @@ public class ClientConfig {
         }
         return true;
     }
+
 }

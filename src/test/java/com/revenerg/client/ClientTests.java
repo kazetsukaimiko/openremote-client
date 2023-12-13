@@ -1,5 +1,6 @@
 package com.revenerg.client;
 
+import com.revenerg.client.cmd.BinaryDeviceCert;
 import com.revenerg.client.cmd.GenerateDeviceKeyAndCSR;
 import com.revenerg.client.cmd.GenerateDeviceCertSignedByRealmCert;
 import com.revenerg.client.cmd.model.DeviceInfo;
@@ -26,6 +27,7 @@ public class ClientTests {
         // Start with a Realm CA Cert and signing key. (ca.pem and ca.key respectively)
         ClientConfig config = new ClientConfig(PROPERTIES_FILE);
 
+
         // Create a device CSR + key. We will use the CSR to generate a device-specific PEM file.
         // The class that calls openssl to generate the device CSR + Key.
         DeviceKeyAndCSR csr = GenerateDeviceKeyAndCSR.INSTANCE.apply(new DeviceInfo(
@@ -38,6 +40,10 @@ public class ClientTests {
                 config.getRealmCertKey(),
                 csr,
                 Duration.ofDays(365 * 20)));
+
+        if (config.isBinaryClientCert()) {
+            deviceCert = BinaryDeviceCert.INSTANCE.apply(deviceCert);
+        }
 
         log.infof("Creating OpenRemoteClient.");
         // Lets connect!
